@@ -1,0 +1,47 @@
+name: BK Forms Parser
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # every 15 minutes
+  workflow_dispatch:           # allow manual runs
+
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write credential files
+        run: |
+          echo '${{ secrets.CREDENTIALS_JSON }}' > credentials.json
+          echo '${{ secrets.TOKEN_JSON }}' > token.json
+
+      - name: Create .env
+        run: |
+          echo "SENDER_EMAIL=${{ secrets.SENDER_EMAIL }}" >> .env
+          echo "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" >> .env
+          echo "NOTIFY_EMAILS=${{ secrets.NOTIFY_EMAILS }}" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+
+      - name: Run parser
+        run: python main.py
+
+      - name: Persist last processed ID
+        run: |
+          if [ -f last_processed_id.txt ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add last_processed_id.txt
+            git diff --staged --quiet || git commit -m "chore: update last processed ID [skip ci]"
+            git push
+          fi
