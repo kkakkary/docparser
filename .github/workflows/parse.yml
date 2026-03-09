@@ -8,6 +8,7 @@ on:
 jobs:
   parse:
     runs-on: ubuntu-latest
+    environment: Griffin
     permissions:
       contents: write
 
@@ -32,6 +33,7 @@ jobs:
           echo "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" >> .env
           echo "NOTIFY_EMAILS=${{ secrets.NOTIFY_EMAILS }}" >> .env
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+          echo "CSV_RECIPIENT=${{ secrets.CSV_RECIPIENT }}" >> .env
 
       - name: Run parser
         run: python main.py

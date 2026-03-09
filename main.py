@@ -31,7 +31,7 @@ TOKEN_FILE = 'token.json'
 SENDER_EMAIL = os.getenv('SENDER_EMAIL')
 APP_PASSWORD = os.getenv('APP_PASSWORD')
 NOTIFY_EMAILS = os.getenv('NOTIFY_EMAILS', '').split(',')
-CSV_RECIPIENT = 'info@andrewgriffinlawoffice.com'
+CSV_RECIPIENT = os.getenv('CSV_RECIPIENT')
 
 gemini = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
 
