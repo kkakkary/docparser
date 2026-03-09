@@ -35,10 +35,12 @@ CSV_RECIPIENT = os.getenv('CSV_RECIPIENT')
 
 gemini = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
 
+today = datetime.now().strftime('%Y/%m/%d')
 GMAIL_QUERY = (
-    'from:Mercedes@andrewgriffinlawoffice.com '
-    'subject:Appointment Remote BK System Form '
-    'has:attachment'
+    f'from:Mercedes@andrewgriffinlawoffice.com '
+    f'subject:BK Forms '
+    f'has:attachment '
+    f'after:{today}'
 )
 LAST_ID_FILE = 'last_processed_id.txt'
 
