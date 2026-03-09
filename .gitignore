@@ -2,6 +2,6 @@
 .venv/
 token.json
 credentials.json
-last_processed_id.txt
+!last_processed_id.txt
 __pycache__/
 *.pyc
