@@ -303,7 +303,7 @@ def main():
             if part.get('filename', '').lower().endswith('.pdf')
         }
         if pdf_clients:
-            print(f"Paired .pdf clients (will skip their .docx): {pdf_clients}\n")
+            print(f"Paired .pdf clients (Mailchimp only, excluded from CSV): {pdf_clients}\n")
 
         parsed_rows = []
 
@@ -315,11 +315,8 @@ def main():
             if not filename.lower().endswith('.docx'):
                 continue
 
-            if client_prefix(filename) in pdf_clients:
-                print(f"Skipping paired .docx: {filename}")
-                continue
-
-            print(f"Found: {filename}")
+            is_paired = client_prefix(filename) in pdf_clients
+            print(f"Found: {filename}" + (" (paired)" if is_paired else ""))
 
             data = download_attachment(service, msg_ref['id'], part)
             if data is None:
@@ -330,12 +327,13 @@ def main():
             text = extract_docx_text(data)
             info = parse_client_info(text, filename)
             if info:
-                parsed_rows.append({
-                    'first_name': info.get('first_name') or '',
-                    'last_name':  info.get('last_name') or '',
-                    'email':      info.get('email') or '',
-                    'phone':      info.get('phone') or '',
-                })
+                if not is_paired:
+                    parsed_rows.append({
+                        'first_name': info.get('first_name') or '',
+                        'last_name':  info.get('last_name') or '',
+                        'email':      info.get('email') or '',
+                        'phone':      info.get('phone') or '',
+                    })
                 if mailchimp_subscribe(info):
                     mailchimp_send_campaign(info)
             print()
