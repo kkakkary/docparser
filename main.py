@@ -39,9 +39,8 @@ CSV_RECIPIENT = os.getenv('CSV_RECIPIENT')
 
 gemini = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
 
-MAILCHIMP_API_KEY   = os.getenv('MAILCHIMP_API_KEY')
+MAILCHIMP_API_KEY     = os.getenv('MAILCHIMP_API_KEY')
 MAILCHIMP_AUDIENCE_ID = os.getenv('MAILCHIMP_AUDIENCE_ID')
-MAILCHIMP_CAMPAIGN_ID = os.getenv('MAILCHIMP_CAMPAIGN_ID')
 
 # Derive the data center from the API key (e.g. "us21" from "xxx-us21")
 _mc_server = MAILCHIMP_API_KEY.split('-')[-1] if MAILCHIMP_API_KEY else ''
@@ -201,41 +200,21 @@ def mailchimp_subscribe(info):
         return False
 
 
-def mailchimp_send_campaign(info):
-    """Replicate the template campaign and send it to a single contact."""
+def mailchimp_add_tag(info, tag="Bankruptcy Lead"):
+    """Apply a tag to a contact, triggering any existing automation."""
     email = info.get('email', '').strip().lower()
     if not email:
         return
+    subscriber_hash = hashlib.md5(email.encode()).hexdigest()
     try:
-        # Replicate the base campaign
-        new_campaign = mailchimp.campaigns.replicate(MAILCHIMP_CAMPAIGN_ID)
-        campaign_id = new_campaign['id']
-
-        # Retarget the copy to just this subscriber via a segment
-        mailchimp.campaigns.update(
-            campaign_id,
-            {
-                "recipients": {
-                    "list_id": MAILCHIMP_AUDIENCE_ID,
-                    "segment_opts": {
-                        "match": "all",
-                        "conditions": [
-                            {
-                                "condition_type": "EmailAddress",
-                                "op": "is",
-                                "field": "EMAIL",
-                                "value": email,
-                            }
-                        ],
-                    },
-                }
-            },
+        mailchimp.lists.update_list_member_tags(
+            MAILCHIMP_AUDIENCE_ID,
+            subscriber_hash,
+            {"tags": [{"name": tag, "status": "active"}]},
         )
-
-        mailchimp.campaigns.send(campaign_id)
-        print(f"  Mailchimp: campaign sent to {email} (campaign id: {campaign_id})")
+        print(f"  Mailchimp: tagged '{tag}' → {email}")
     except ApiClientError as e:
-        print(f"  Mailchimp campaign failed for {email}: {e.text}")
+        print(f"  Mailchimp tagging failed for {email}: {e.text}")
 
 
 def build_csv(rows):
@@ -335,7 +314,7 @@ def main():
                         'phone':      info.get('phone') or '',
                     })
                 if mailchimp_subscribe(info):
-                    mailchimp_send_campaign(info)
+                    mailchimp_add_tag(info)
             print()
 
         save_last_id(msg_ref['id'])
