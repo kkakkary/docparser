@@ -202,6 +202,9 @@ def mailchimp_subscribe(info):
         print(f"  Mailchimp: new contact subscribed ({email})")
         return True
     except ApiClientError as e:
+        if 'resubscribe' in e.text.lower() or 're-subscribe' in e.text.lower():
+            print(f"  Mailchimp: contact is unsubscribed — skipping subscribe, will still tag ({email})")
+            return True
         print(f"  Mailchimp subscribe failed for {email}: {e.text}")
         return False
 
