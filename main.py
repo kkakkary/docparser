@@ -173,19 +173,25 @@ Use null for any field not found. No extra text or formatting.
 
 
 def mailchimp_subscribe(info):
-    """Add or update a contact in the Mailchimp audience."""
+    """Add contact if new, otherwise leave existing data untouched."""
     email = info.get('email', '').strip().lower()
     if not email:
         print("  Skipping Mailchimp: no email address.")
         return False
     subscriber_hash = hashlib.md5(email.encode()).hexdigest()
     try:
-        mailchimp.lists.set_list_member(
+        mailchimp.lists.get_list_member(MAILCHIMP_AUDIENCE_ID, subscriber_hash)
+        print(f"  Mailchimp: contact already exists — skipping subscribe ({email})")
+        return True
+    except ApiClientError:
+        pass  # 404 means contact doesn't exist yet — create them below
+
+    try:
+        mailchimp.lists.add_list_member(
             MAILCHIMP_AUDIENCE_ID,
-            subscriber_hash,
             {
                 "email_address": email,
-                "status_if_new": "subscribed",
+                "status": "subscribed",
                 "merge_fields": {
                     "FNAME": info.get('first_name') or '',
                     "LNAME": info.get('last_name') or '',
@@ -193,7 +199,7 @@ def mailchimp_subscribe(info):
                 },
             },
         )
-        print(f"  Mailchimp: subscribed {email}")
+        print(f"  Mailchimp: new contact subscribed ({email})")
         return True
     except ApiClientError as e:
         print(f"  Mailchimp subscribe failed for {email}: {e.text}")
