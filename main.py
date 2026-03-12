@@ -12,6 +12,10 @@ from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime
 
+import hashlib
+import mailchimp_marketing as MailchimpMarketing
+from mailchimp_marketing.api_client import ApiClientError
+
 from dotenv import load_dotenv
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -34,6 +38,15 @@ NOTIFY_EMAILS = os.getenv('NOTIFY_EMAILS', '').split(',')
 CSV_RECIPIENT = os.getenv('CSV_RECIPIENT')
 
 gemini = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+
+MAILCHIMP_API_KEY   = os.getenv('MAILCHIMP_API_KEY')
+MAILCHIMP_AUDIENCE_ID = os.getenv('MAILCHIMP_AUDIENCE_ID')
+MAILCHIMP_CAMPAIGN_ID = os.getenv('MAILCHIMP_CAMPAIGN_ID')
+
+# Derive the data center from the API key (e.g. "us21" from "xxx-us21")
+_mc_server = MAILCHIMP_API_KEY.split('-')[-1] if MAILCHIMP_API_KEY else ''
+mailchimp = MailchimpMarketing.Client()
+mailchimp.set_config({"api_key": MAILCHIMP_API_KEY, "server": _mc_server})
 
 today = datetime.now().strftime('%Y/%m/%d')
 GMAIL_QUERY = (
@@ -160,6 +173,71 @@ Use null for any field not found. No extra text or formatting.
         return None
 
 
+def mailchimp_subscribe(info):
+    """Add or update a contact in the Mailchimp audience."""
+    email = info.get('email', '').strip().lower()
+    if not email:
+        print("  Skipping Mailchimp: no email address.")
+        return False
+    subscriber_hash = hashlib.md5(email.encode()).hexdigest()
+    try:
+        mailchimp.lists.set_list_member(
+            MAILCHIMP_AUDIENCE_ID,
+            subscriber_hash,
+            {
+                "email_address": email,
+                "status_if_new": "subscribed",
+                "merge_fields": {
+                    "FNAME": info.get('first_name') or '',
+                    "LNAME": info.get('last_name') or '',
+                    "PHONE": info.get('phone') or '',
+                },
+            },
+        )
+        print(f"  Mailchimp: subscribed {email}")
+        return True
+    except ApiClientError as e:
+        print(f"  Mailchimp subscribe failed for {email}: {e.text}")
+        return False
+
+
+def mailchimp_send_campaign(info):
+    """Replicate the template campaign and send it to a single contact."""
+    email = info.get('email', '').strip().lower()
+    if not email:
+        return
+    try:
+        # Replicate the base campaign
+        new_campaign = mailchimp.campaigns.replicate(MAILCHIMP_CAMPAIGN_ID)
+        campaign_id = new_campaign['id']
+
+        # Retarget the copy to just this subscriber via a segment
+        mailchimp.campaigns.update(
+            campaign_id,
+            {
+                "recipients": {
+                    "list_id": MAILCHIMP_AUDIENCE_ID,
+                    "segment_opts": {
+                        "match": "all",
+                        "conditions": [
+                            {
+                                "condition_type": "EmailAddress",
+                                "op": "is",
+                                "field": "EMAIL",
+                                "value": email,
+                            }
+                        ],
+                    },
+                }
+            },
+        )
+
+        mailchimp.campaigns.send(campaign_id)
+        print(f"  Mailchimp: campaign sent to {email} (campaign id: {campaign_id})")
+    except ApiClientError as e:
+        print(f"  Mailchimp campaign failed for {email}: {e.text}")
+
+
 def build_csv(rows):
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=['first_name', 'last_name', 'email', 'phone'])
@@ -258,6 +336,8 @@ def main():
                     'email':      info.get('email') or '',
                     'phone':      info.get('phone') or '',
                 })
+                if mailchimp_subscribe(info):
+                    mailchimp_send_campaign(info)
             print()
 
         save_last_id(msg_ref['id'])
