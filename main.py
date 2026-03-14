@@ -47,12 +47,10 @@ _mc_server = MAILCHIMP_API_KEY.split('-')[-1] if MAILCHIMP_API_KEY else ''
 mailchimp = MailchimpMarketing.Client()
 mailchimp.set_config({"api_key": MAILCHIMP_API_KEY, "server": _mc_server})
 
-today = datetime.now().strftime('%Y/%m/%d')
 GMAIL_QUERY = (
     f'from:Mercedes@andrewgriffinlawoffice.com '
     f'subject:BK Forms '
-    f'has:attachment '
-    f'after:{today}'
+    f'has:attachment'
 )
 LAST_ID_FILE = 'last_processed_id.txt'
 
