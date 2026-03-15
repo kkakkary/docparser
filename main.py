@@ -292,6 +292,7 @@ def main():
             print(f"Paired .pdf clients (Mailchimp only, excluded from CSV): {pdf_clients}\n")
 
         parsed_rows = []
+        paired_count = 0
 
         for part in parts:
             filename = part.get('filename')
@@ -320,6 +321,8 @@ def main():
                         'email':      info.get('email') or '',
                         'phone':      info.get('phone') or '',
                     })
+                else:
+                    paired_count += 1
                 if mailchimp_subscribe(info):
                     mailchimp_add_tag(info)
             print()
@@ -333,6 +336,12 @@ def main():
                 "[BK Forms] Success - Client Info CSV Sent",
                 f"Run time: {run_time}\n\nParsed {len(parsed_rows)} .docx attachment(s).\n"
                 f"CSV sent to {CSV_RECIPIENT}.\n\nEmail: {email_subject}"
+            )
+        elif paired_count:
+            send_notification(
+                "[BK Forms] All Clients Paired - Mailchimp Only",
+                f"Run time: {run_time}\n\n{paired_count} client(s) were processed and tagged in Mailchimp.\n"
+                f"All had paired .pdf files so no CSV was generated.\n\nEmail: {email_subject}"
             )
         else:
             send_notification(
