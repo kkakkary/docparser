@@ -49,8 +49,8 @@ mailchimp.set_config({"api_key": MAILCHIMP_API_KEY, "server": _mc_server})
 
 GMAIL_QUERY = (
     f'from:Mercedes@andrewgriffinlawoffice.com '
-    f'subject:BK Forms '
-    f'has:attachment'
+    f'has:attachment '
+    f'(subject:"BK Forms" OR subject:"BK System Form" OR subject:"Remote BK System Form" OR subject:"Appointment - BK" OR subject:"Appointment - Remote BK")'
 )
 LAST_ID_FILE = 'last_processed_id.txt'
 
