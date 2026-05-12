@@ -177,7 +177,7 @@ Use null for any field not found. No extra text or formatting.
 
 def mailchimp_subscribe(info):
     """Add contact if new, otherwise leave existing data untouched."""
-    email = info.get('email', '').strip().lower()
+    email = (info.get('email') or '').strip().lower()
     if not email:
         print("  Skipping Mailchimp: no email address.")
         return False
@@ -214,7 +214,7 @@ def mailchimp_subscribe(info):
 
 def mailchimp_add_tag(info, tag="Bankruptcy Lead"):
     """Apply a tag to a contact, triggering any existing automation."""
-    email = info.get('email', '').strip().lower()
+    email = (info.get('email') or '').strip().lower()
     if not email:
         return
     subscriber_hash = hashlib.md5(email.encode()).hexdigest()
