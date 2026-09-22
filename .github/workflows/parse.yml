@@ -41,12 +41,12 @@ jobs:
         run: python main.py
 
       - name: Persist last processed ID
+        if: always()
         run: |
-          if [ -f last_processed_id.txt ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add last_processed_id.txt
-            git diff --staged --quiet || git commit -m "chore: update last processed ID [skip ci]"
-            git pull --rebase
-            git push
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          [ -f last_processed_id.txt ] && git add last_processed_id.txt
+          [ -f last_run_failed.flag ] && git add last_run_failed.flag
+          git diff --staged --quiet || git commit -m "chore: update last processed ID [skip ci]"
+          git pull --rebase
+          git push

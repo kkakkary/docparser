@@ -58,6 +58,7 @@ GMAIL_QUERY = (
     f'subject:"Appt - Remote BK" OR subject:"Appts - Remote BK" OR subject:"Appt Remote BK" OR subject:"Appts Remote BK")'
 )
 LAST_ID_FILE = 'last_processed_id.txt'
+FAILURE_FLAG_FILE = 'last_run_failed.flag'
 
 
 # --- Gmail auth ---
@@ -248,6 +249,20 @@ def save_last_id(msg_id):
         f.write(msg_id)
 
 
+def was_already_failing():
+    return os.path.exists(FAILURE_FLAG_FILE)
+
+
+def mark_failing():
+    with open(FAILURE_FLAG_FILE, 'w') as f:
+        f.write('1')
+
+
+def clear_failing():
+    if os.path.exists(FAILURE_FLAG_FILE):
+        os.remove(FAILURE_FLAG_FILE)
+
+
 def check_for_new_email(service):
     """Return the latest email if it hasn't been processed yet, otherwise None."""
     last_id = load_last_id()
@@ -271,6 +286,7 @@ def main():
         msg_ref = check_for_new_email(service)
         if not msg_ref:
             print("No new email found. Exiting.")
+            clear_failing()
             return
         meta = service.users().messages().get(
             userId='me', id=msg_ref['id'], format='metadata',
@@ -333,6 +349,7 @@ def main():
             print()
 
         save_last_id(msg_ref['id'])
+        clear_failing()
         print(f"Done! Parsed {len(parsed_rows)} attachment(s).")
 
         if parsed_rows:
@@ -357,7 +374,11 @@ def main():
     except Exception as e:
         error_msg = f"Script failed: {e}"
         print(error_msg)
-        send_notification("[BK Forms] ERROR - Script Failed", f"Run time: {run_time}\n\n{error_msg}")
+        if was_already_failing():
+            print("Suppressing duplicate failure notification (already alerted).")
+        else:
+            mark_failing()
+            send_notification("[BK Forms] ERROR - Script Failed", f"Run time: {run_time}\n\n{error_msg}")
 
 
 if __name__ == '__main__':
